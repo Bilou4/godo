@@ -25,63 +25,32 @@ var lsCmd = &cobra.Command{
 			return err
 		}
 
-		lists, err := lr.GetAllLists()
-		if err != nil {
-			return err
-		}
-		if len(lists) > 0 {
-			for _, l := range lists {
-				var tasks []model.Task
-				if onlyDone {
-					tasks, err = tr.GetDoneTasksByListId(l.ID)
-				} else {
-					tasks, err = tr.GetTasksByListId(l.ID)
-				}
-				if err != nil {
-					return err
-				}
-
-				if len(tasks) > 0 {
-					prettyTable := table.NewWriter()
-					prettyTable.Style().Options.DrawBorder = true
-					prettyTable.Style().Options.SeparateRows = true
-					prettyTable.SetStyle(table.StyleLight)
-					prettyTable.SetTitle(fmt.Sprintf("ID:%d  - Name: %s", l.ID, l.Name))
-					prettyTable.Style().Title.Align = text.AlignCenter
-					prettyTable.AppendRow(table.Row{"ID", "Name", "Due Date", "Priority", "Done", "Created"})
-					prettyTable.SetColumnConfigs(
-						[]table.ColumnConfig{
-							{Number: 1, Align: text.AlignCenter},
-							{Number: 2, Align: text.AlignCenter},
-							{Number: 3, Align: text.AlignCenter},
-							{Number: 4, Align: text.AlignCenter},
-							{Number: 5, Align: text.AlignCenter},
-							{Number: 6, Align: text.AlignCenter},
-						},
-					)
-					for _, t := range tasks {
-						var dueDateStr string = "None"
-						if !t.DueDate.IsZero() {
-							dueDateStr = t.DueDate.Format("2006-01-02 15:04")
-						}
-						var done string = "🗹"
-						if !t.Done {
-							done = "□"
-						}
-						created := getCreatedMessage(t.CreatedAt)
-						prettyTable.AppendRow(table.Row{t.ID, t.Name, dueDateStr, t.Priority, done, created})
-					}
-
-					fmt.Println(prettyTable.Render())
-					fmt.Println()
-				} else {
-					fmt.Println("No tasks to show.")
-				}
+		listIdIsSet := cmd.Flags().Lookup("list-id").Changed
+		if listIdIsSet {
+			listId, err := cmd.Flags().GetUint("list-id")
+			if err != nil {
+				return err
 			}
-		} else {
-			fmt.Println("Nothing to show.")
-		}
+			list, err := lr.GetListById(listId)
+			if err != nil {
+				return err
+			}
+			showTasksForList(list, onlyDone)
 
+		} else {
+			// show all lists and tasks
+			lists, err := lr.GetAllLists()
+			if err != nil {
+				return err
+			}
+			if len(lists) > 0 {
+				for _, l := range lists {
+					showTasksForList(l, onlyDone)
+				}
+			} else {
+				fmt.Println("Nothing to show.")
+			}
+		}
 		return nil
 	},
 }
@@ -92,8 +61,6 @@ func getCreatedMessage(createdAt time.Time) string {
 	case diffHours > 48:
 		diffHours = diffHours / 24
 		return fmt.Sprintf("%d days ago", diffHours)
-	case diffHours > 24:
-		return "yesterday"
 	case diffHours == 1:
 		return fmt.Sprintf("%d hour ago", diffHours)
 	case diffHours == 0:
@@ -108,9 +75,66 @@ func getCreatedMessage(createdAt time.Time) string {
 	}
 }
 
+func getPrettyTable() table.Writer {
+	prettyTable := table.NewWriter()
+	prettyTable.Style().Options.DrawBorder = true
+	prettyTable.Style().Options.SeparateRows = true
+	prettyTable.SetStyle(table.StyleLight)
+	prettyTable.Style().Title.Align = text.AlignCenter
+	prettyTable.AppendRow(table.Row{"ID", "Name", "Due Date", "Priority", "Done", "Created"})
+	prettyTable.SetColumnConfigs(
+		[]table.ColumnConfig{
+			{Number: 1, Align: text.AlignCenter},
+			{Number: 2, Align: text.AlignCenter},
+			{Number: 3, Align: text.AlignCenter},
+			{Number: 4, Align: text.AlignCenter},
+			{Number: 5, Align: text.AlignCenter},
+			{Number: 6, Align: text.AlignCenter},
+		},
+	)
+	return prettyTable
+}
+
+func showTasksForList(l *model.List, onlyDone bool) error {
+	var err error
+	var tasks []model.Task
+	if onlyDone {
+		tasks, err = tr.GetDoneTasksByListId(l.ID)
+	} else {
+		tasks, err = tr.GetTasksByListId(l.ID)
+	}
+	if err != nil {
+		return err
+	}
+
+	if len(tasks) > 0 {
+		prettyTable := getPrettyTable()
+		prettyTable.SetTitle(fmt.Sprintf("ID:%d  - Name: %s", l.ID, l.Name))
+
+		for _, t := range tasks {
+			var dueDateStr string = "None"
+			if !t.DueDate.IsZero() {
+				dueDateStr = t.DueDate.Format("2006-01-02 15:04")
+			}
+			var done string = "🗹"
+			if !t.Done {
+				done = "□"
+			}
+			created := getCreatedMessage(t.CreatedAt)
+			prettyTable.AppendRow(table.Row{t.ID, t.Name, dueDateStr, t.Priority, done, created})
+		}
+
+		fmt.Println(prettyTable.Render())
+		fmt.Println()
+	} else {
+		fmt.Printf("%s: no tasks to show.\n", l.Name)
+	}
+	return nil
+}
+
 func init() {
 	rootCmd.AddCommand(lsCmd)
 
-	// TODO add an optional list-id flag to show only tasks from a list
 	lsCmd.Flags().Bool("done", false, "Show only done Tasks.")
+	lsCmd.Flags().UintP("list-id", "l", 0, "Id of the List you want to see the tasks.")
 }
