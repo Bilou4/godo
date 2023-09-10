@@ -55,6 +55,10 @@ var addCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
+
+			if dueDate.Before(time.Now()) {
+				fmt.Println("WARNING: your due date is in the past")
+			}
 		}
 
 		t, err := tr.CreateTask(listId, taskName, dueDate, model.Priority(priority))

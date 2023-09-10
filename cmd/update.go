@@ -81,11 +81,15 @@ var updateCmd = &cobra.Command{
 			if dueDateString == "" {
 				return errors.New("the due date of your task cannot be empty")
 			} else {
-				// TODO: warning when dueDate is before time.Now()
 				dueDate, err := time.Parse(dueDateFormat, dueDateString)
 				if err != nil {
 					return err
 				}
+
+				if dueDate.Before(time.Now()) {
+					fmt.Println("WARNING: your due date is in the past")
+				}
+
 				err = tr.UpdateTaskDueDate(taskId, dueDate)
 				if err != nil {
 					return err
