@@ -19,6 +19,10 @@ var rmListCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		force, err := cmd.Flags().GetBool("force")
+		if err != nil {
+			return err
+		}
 
 		exists, err := lr.ListExists(listId)
 		if err != nil {
@@ -28,22 +32,29 @@ var rmListCmd = &cobra.Command{
 			return fmt.Errorf("'%d' does not exist", listId)
 		}
 
-		err = tr.DeleteTasks(listId)
+		hasTasks, err := lr.ListHasTasks(listId)
 		if err != nil {
 			return err
 		}
-		err = lr.DeleteList(listId)
-		if err != nil {
-			return err
-		}
-		return nil
 
+		if hasTasks {
+			if force {
+				err = tr.DeleteTasks(listId)
+				if err != nil {
+					return err
+				}
+			} else {
+				fmt.Println("List is not empty.")
+				return nil
+			}
+		}
+		return lr.DeleteList(listId)
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(rmListCmd)
-	// TODO add a 'force' flag to remove all tasks and the list
+	rmListCmd.Flags().Bool("force", false, "Force deletion of the List and all Tasks.")
 	rmListCmd.Flags().UintP("list-id", "l", 0, "Id of the List to remove.")
 	rmListCmd.MarkFlagRequired("list-id")
 

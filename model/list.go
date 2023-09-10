@@ -59,7 +59,13 @@ func (lr *ListRepository) DeleteList(listId uint) error {
 	}
 	return nil
 }
-
+func (lr *ListRepository) DeleteListByName(name string) error {
+	tx := lr.DB.Unscoped().Where("name = ?", name).Delete(&List{})
+	if tx.Error != nil {
+		return fmt.Errorf("list deletion error %w", tx.Error)
+	}
+	return nil
+}
 func (lr *ListRepository) getListByName(listName string) *List {
 	l := &List{}
 	result := lr.DB.First(l, "name = ?", listName)
@@ -69,13 +75,13 @@ func (lr *ListRepository) getListByName(listName string) *List {
 	return l
 }
 
-func (lr *ListRepository) getListById(listId uint) *List {
+func (lr *ListRepository) GetListById(listId uint) (*List, error) {
 	l := &List{}
 	result := lr.DB.First(l, "id = ?", listId)
 	if result.Error != nil {
-		return nil
+		return nil, result.Error
 	}
-	return l
+	return l, nil
 }
 
 func (lr *ListRepository) ListExists(listId uint) (bool, error) {
@@ -83,6 +89,15 @@ func (lr *ListRepository) ListExists(listId uint) (bool, error) {
 	res := lr.DB.Model(&List{}).
 		Select("count(*) > 0").
 		Where("id = ?", listId).
+		Find(&exists)
+	return exists, res.Error
+}
+
+func (lr *ListRepository) ListHasTasks(listId uint) (bool, error) {
+	var exists bool
+	res := lr.DB.Model(&Task{}).
+		Select("count(*) > 0").
+		Where("list_id = ?", listId).
 		Find(&exists)
 	return exists, res.Error
 }
