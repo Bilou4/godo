@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
+	"github.com/charmbracelet/bubbles/paginator"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -18,13 +19,14 @@ var (
 )
 
 const (
-	divisor = 4
+	divisor = 3
 )
 
 type tuiModel struct {
 	focus          int
 	loaded         bool
 	lists          []list.Model
+	paginator      paginator.Model
 	quitting       bool
 	tr             model.TaskRepository
 	lr             model.ListRepository
@@ -41,6 +43,13 @@ func NewModel(tr model.TaskRepository, lr model.ListRepository) tuiModel {
 	m := tuiModel{focus: 0, loaded: false, tr: tr, lr: lr}
 	m.help = help.New()
 	m.keys = getKeybindings()
+
+	m.paginator = paginator.New()
+	m.paginator.Type = paginator.Dots
+	m.paginator.PerPage = divisor
+	m.paginator.ActiveDot = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "235", Dark: "252"}).Render("•")
+	m.paginator.InactiveDot = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "250", Dark: "238"}).Render("•")
+
 	return m
 }
 
@@ -49,9 +58,7 @@ func (m *tuiModel) initLists(width, height int) {
 	if err != nil {
 		m.msg = "error retrieving all lists" // err.Error()
 	}
-	// TODO handle when no lists are available
-	// if len(lists) > 0 {
-	// }
+
 	var modelLists []list.Model
 	for _, l := range lists {
 		tasks, _ := m.tr.GetTasksByListId(l.ID)
@@ -65,30 +72,44 @@ func (m *tuiModel) initLists(width, height int) {
 		modelLists = append(modelLists, newList)
 	}
 	m.lists = modelLists
+	m.paginator.SetTotalPages(len(m.lists))
 }
 
 func (m *tuiModel) Next() {
 	if m.focus+1 > len(m.lists)-1 {
 		m.focus = 0
+		m.paginator.Page = 0
 	} else {
+		if (m.focus+1)%m.paginator.PerPage == 0 {
+			m.paginator.NextPage()
+		}
 		m.focus++
 	}
 }
 
 func (m *tuiModel) Prev() {
 	if m.focus-1 < 0 {
-		m.focus = len(m.lists) - 1
+		if len(m.lists) == 0 {
+			m.focus = 0
+			m.paginator.Page = 0
+		} else {
+			m.focus = len(m.lists) - 1
+			m.paginator.Page = m.paginator.TotalPages - 1
+		}
 	} else {
+		if (m.focus)%m.paginator.PerPage == 0 {
+			m.paginator.PrevPage()
+		}
 		m.focus--
 	}
 }
 
 func (m tuiModel) calculateListWidth() int {
-	return m.width / divisor
+	return (m.width / divisor) - divisor
 }
 
 func (m tuiModel) calculateListHeight() int {
-	return m.height * 3 / divisor
+	return m.height * 2 / divisor
 }
 
 func (m tuiModel) Init() tea.Cmd {
@@ -108,6 +129,11 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			focusedStyle.Width(m.calculateListWidth())
 			m.initLists(m.width, m.height)
 			m.loaded = true
+			// when no list exists
+			if len(m.lists) == 0 {
+				mainModel = m
+				return newListForm(0, "").Update(nil)
+			}
 		} else {
 			w := m.calculateListWidth()
 			h := m.calculateListHeight()
@@ -118,7 +144,6 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			columnStyle.Width(w)
 			focusedStyle.Width(w)
 		}
-		// TODO: handle resizing when m.help.ShowAll = true
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, key.NewBinding(key.WithKeys("q"))):
@@ -151,7 +176,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			lName := m.lists[m.focus].Title
 			// remove the list from the db
-			err := m.lr.DeleteList(uint(m.focus + 1))
+			err := m.lr.DeleteListByName(lName)
 			if err != nil {
 				m.msg = fmt.Sprintf("Error deleting List: %s", err.Error())
 			}
@@ -160,6 +185,13 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// focus the previous list
 			m.Prev()
 			m.msg = fmt.Sprintf("List '%s' deleted", lName)
+			m.paginator.SetTotalPages(len(m.lists))
+
+			// if we deleted the last List, then creates a new one.
+			if len(m.lists) == 0 {
+				mainModel = m
+				return newListForm(0, "").Update(nil)
+			}
 			return m, cmd
 		case key.Matches(msg, m.keys.UpdateTask):
 			m.msg = ""
@@ -271,6 +303,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if err != nil {
 				m.msg = fmt.Sprintf("Error creating List: %s", err.Error())
 			}
+			m.paginator.SetTotalPages(len(m.lists))
 			m.msg = fmt.Sprintf("List: '%s' added", nlist.Name)
 			return m, cmd
 		}
@@ -297,15 +330,15 @@ func (m tuiModel) View() string {
 			statusVal,
 		)
 		statusBar.WriteString(statusBarStyle.Width(m.width).Render(bar))
-
-		for idx, ml := range m.lists {
-			if m.focus == idx {
+		start, end := m.paginator.GetSliceBounds(len(m.lists))
+		for idx, ml := range m.lists[start:end] {
+			if m.focus == idx+start {
 				cols = append(cols, focusedStyle.Render(ml.View()))
 			} else {
 				cols = append(cols, columnStyle.Render(ml.View()))
 			}
 		}
-		return lipgloss.JoinVertical(lipgloss.Left, lipgloss.JoinHorizontal(lipgloss.Left, cols...), statusBar.String(), m.help.View(m.keys))
+		return lipgloss.JoinVertical(lipgloss.Left, lipgloss.JoinHorizontal(lipgloss.Left, cols...), m.paginator.View(), statusBar.String(), m.help.View(m.keys))
 	} else {
 		return "Loading..."
 	}
