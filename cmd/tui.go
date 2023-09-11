@@ -1,8 +1,7 @@
 package cmd
 
 import (
-	"fmt"
-	"os"
+	"errors"
 
 	"github.com/Bilou4/godo/tui"
 	"github.com/spf13/cobra"
@@ -20,21 +19,28 @@ var tuiCmd = &cobra.Command{
 		return persistentPreRun()
 	},
 
-	Run: func(cmd *cobra.Command, args []string) {
-		mainModel := tui.NewModel(tr, lr)
-		_, err := tea.LogToFile("app.log", "")
+	RunE: func(cmd *cobra.Command, args []string) error {
+		listPerPage, err := cmd.Flags().GetInt("list-per-page")
 		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+			return err
+		}
+		if listPerPage < 1 {
+			return errors.New("the list-per-page flag cannot be less than 1.")
+		}
+		mainModel := tui.NewModel(tr, lr, listPerPage)
+		_, err = tea.LogToFile("app.log", "")
+		if err != nil {
+			return err
 		}
 		p := tea.NewProgram(mainModel)
 		if err := p.Start(); err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+			return err
 		}
+		return nil
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(tuiCmd)
+	tuiCmd.Flags().IntP("list-per-page", "l", 3, "Number of lists to display per page.")
 }

@@ -18,10 +18,6 @@ var (
 	mainModel tea.Model
 )
 
-const (
-	divisor = 3
-)
-
 type tuiModel struct {
 	focus          int
 	loaded         bool
@@ -39,14 +35,14 @@ type tuiModel struct {
 	help           help.Model
 }
 
-func NewModel(tr model.TaskRepository, lr model.ListRepository) tuiModel {
+func NewModel(tr model.TaskRepository, lr model.ListRepository, listPerPage int) tuiModel {
 	m := tuiModel{focus: 0, loaded: false, tr: tr, lr: lr}
 	m.help = help.New()
 	m.keys = getKeybindings()
 
 	m.paginator = paginator.New()
 	m.paginator.Type = paginator.Dots
-	m.paginator.PerPage = divisor
+	m.paginator.PerPage = listPerPage
 	m.paginator.ActiveDot = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "235", Dark: "252"}).Render("•")
 	m.paginator.InactiveDot = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "250", Dark: "238"}).Render("•")
 
@@ -105,11 +101,11 @@ func (m *tuiModel) Prev() {
 }
 
 func (m tuiModel) calculateListWidth() int {
-	return (m.width / divisor) - divisor
+	return (m.width - m.paginator.PerPage*2) / m.paginator.PerPage
 }
 
 func (m tuiModel) calculateListHeight() int {
-	return m.height * 2 / divisor
+	return m.height * 2 / 3
 }
 
 func (m tuiModel) Init() tea.Cmd {
