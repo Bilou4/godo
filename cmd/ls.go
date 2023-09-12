@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Bilou4/godo/configuration"
 	"github.com/Bilou4/godo/model"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
@@ -114,7 +115,7 @@ func showTasksForList(l *model.List, onlyDone bool) error {
 		for _, t := range tasks {
 			var dueDateStr string = "None"
 			if !t.DueDate.IsZero() {
-				dueDateStr = t.DueDate.Format("2006-01-02 15:04")
+				dueDateStr = t.DueDate.Format(configuration.DueDateFormat)
 			}
 			var done string = "🗹"
 			if !t.Done {

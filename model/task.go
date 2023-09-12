@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Bilou4/godo/configuration"
 	"gorm.io/gorm"
 )
 
@@ -44,7 +45,7 @@ func (t Task) Title() string {
 func (t Task) Description() string {
 	var dueDateStr string = "None"
 	if !t.DueDate.IsZero() {
-		dueDateStr = t.DueDate.Format("2006-01-02 15:04")
+		dueDateStr = t.DueDate.Format(configuration.DueDateFormat)
 	}
 	var done string = "🗹"
 	if !t.Done {

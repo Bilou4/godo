@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Bilou4/godo/configuration"
 	"github.com/Bilou4/godo/model"
 	"github.com/spf13/cobra"
 )
@@ -81,7 +82,7 @@ var updateCmd = &cobra.Command{
 			if dueDateString == "" {
 				return errors.New("the due date of your task cannot be empty")
 			} else {
-				dueDate, err := time.Parse(dueDateFormat, dueDateString)
+				dueDate, err := time.Parse(configuration.DueDateFormat, dueDateString)
 				if err != nil {
 					return err
 				}
@@ -118,7 +119,7 @@ func init() {
 	updateCmd.Flags().UintP("task-id", "t", 0, "Id of the Task to update.")
 	updateCmd.Flags().StringP("name", "n", "", "New name of the Task.")
 	updateCmd.Flags().StringP("priority", "p", "", "Priority of your Task [HIGH, MEDIUM, LOW].")
-	updateCmd.Flags().StringP("due-date", "d", "", fmt.Sprintf("Due date for the Task (format: %s).", dueDateFormat))
+	updateCmd.Flags().StringP("due-date", "d", "", fmt.Sprintf("Due date for the Task (format: %s).", configuration.DueDateFormat))
 
 	updateCmd.MarkFlagRequired("task-id")
 }

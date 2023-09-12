@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Bilou4/godo/configuration"
 	"github.com/Bilou4/godo/model"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -29,9 +30,9 @@ func newForm(listId, taskId int, currentTitle, currentPriority string, currentDu
 	form.title.SetValue(currentTitle)
 	form.dueDate = textinput.New()
 	if currentDueDate.IsZero() {
-		form.dueDate.Placeholder = "2006-01-02 15:04"
+		form.dueDate.Placeholder = configuration.DueDateFormat
 	} else {
-		form.dueDate.SetValue(currentDueDate.Format("2006-01-02 15:04"))
+		form.dueDate.SetValue(currentDueDate.Format(configuration.DueDateFormat))
 	}
 	form.priority = textinput.New()
 	form.priority.SetValue(currentPriority)
@@ -47,7 +48,7 @@ func (m TaskForm) NewTask() tea.Msg {
 		dueDate = time.Time{}
 	} else {
 		// we already checked the error in the dudeDateIsValid() function
-		dueDate, _ = time.Parse("2006-01-02 15:04", m.dueDate.Value())
+		dueDate, _ = time.Parse(configuration.DueDateFormat, m.dueDate.Value())
 	}
 
 	task := model.Task{ListId: uint(m.listId), Model: gorm.Model{ID: uint(m.taskId)}, Name: m.title.Value(), DueDate: dueDate, Priority: model.Priority(strings.ToUpper(m.priority.Value()))}
@@ -63,7 +64,7 @@ func (m TaskForm) dueDateIsValid() bool {
 	if strings.ToLower(dueDateStr) == "none" || dueDateStr == "" {
 		return true
 	}
-	_, err := time.Parse("2006-01-02 15:04", dueDateStr)
+	_, err := time.Parse(configuration.DueDateFormat, dueDateStr)
 	return err == nil
 }
 

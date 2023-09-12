@@ -5,11 +5,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Bilou4/godo/configuration"
 	"github.com/Bilou4/godo/model"
 	"github.com/spf13/cobra"
 )
-
-const dueDateFormat string = "2006-01-02 15:04"
 
 // addCmd represents the add command
 var addCmd = &cobra.Command{
@@ -51,7 +50,7 @@ var addCmd = &cobra.Command{
 		}
 		var dueDate time.Time
 		if dueDateString != "" {
-			dueDate, err = time.Parse(dueDateFormat, dueDateString)
+			dueDate, err = time.Parse(configuration.DueDateFormat, dueDateString)
 			if err != nil {
 				return err
 			}
@@ -78,7 +77,7 @@ func init() {
 	addCmd.Flags().UintP("list-id", "l", 0, "Id of the List where to add your Task.")
 	addCmd.Flags().StringP("name", "n", "", "Name of the Task.")
 	addCmd.Flags().StringP("priority", "p", "LOW", "Priority of your Task [HIGH, MEDIUM, LOW].")
-	addCmd.Flags().StringP("due-date", "d", "", fmt.Sprintf("Due date for the Task (format: %s).", dueDateFormat))
+	addCmd.Flags().StringP("due-date", "d", "", fmt.Sprintf("Due date for the Task (format: %s).", configuration.DueDateFormat))
 
 	addCmd.MarkFlagRequired("list-id")
 	addCmd.MarkFlagRequired("name")
