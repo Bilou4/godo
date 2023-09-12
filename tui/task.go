@@ -13,11 +13,6 @@ import (
 	"gorm.io/gorm"
 )
 
-var (
-	helpStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("241"))
-)
-
 type TaskForm struct {
 	listId   int
 	taskId   int
@@ -25,17 +20,18 @@ type TaskForm struct {
 	dueDate  textinput.Model
 	priority textinput.Model
 	msg      string
+	styles   *TuiStyles
 }
 
-func newForm(listId, taskId int, currentTitle, currentPriority string, currentDueDate time.Time) *TaskForm {
-	form := &TaskForm{listId: listId}
+func newForm(listId, taskId int, currentTitle, currentPriority string, currentDueDate time.Time, styles *TuiStyles) *TaskForm {
+	form := &TaskForm{listId: listId, styles: styles}
 	form.title = textinput.New()
 	form.title.SetValue(currentTitle)
 	form.dueDate = textinput.New()
 	if currentDueDate.IsZero() {
-		form.dueDate.Placeholder = "2006-05-20 15:12"
+		form.dueDate.Placeholder = "2006-01-02 15:04"
 	} else {
-		form.dueDate.SetValue(currentDueDate.Format("2006-05-20 15:12"))
+		form.dueDate.SetValue(currentDueDate.Format("2006-01-02 15:04"))
 	}
 	form.priority = textinput.New()
 	form.priority.SetValue(currentPriority)
@@ -131,19 +127,19 @@ func (m TaskForm) helpMenu() string {
 	} else {
 		msg = "submit"
 	}
-	return helpStyle.Render(fmt.Sprintf("enter: %s", msg))
+	return m.styles.HelpStyle.Render(fmt.Sprintf("enter: %s", msg))
 }
 
 func (m TaskForm) View() string {
 	// Status bar
 	statusBar := strings.Builder{}
-	statusVal := statusText.Copy().
+	statusVal := m.styles.StatusText.Copy().
 		Width(112 - lipgloss.Width(statusKey)).
 		Render(m.msg)
 	bar := lipgloss.JoinHorizontal(lipgloss.Top,
-		statusStyle.Render(statusKey),
+		m.styles.StatusStyle.Render(statusKey),
 		statusVal,
 	)
-	statusBar.WriteString(statusBarStyle.Width(112).Render(bar))
+	statusBar.WriteString(m.styles.StatusBarStyle.Width(112).Render(bar))
 	return lipgloss.JoinVertical(lipgloss.Left, m.title.View(), m.dueDate.View(), m.priority.View(), statusBar.String(), m.helpMenu())
 }

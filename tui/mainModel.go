@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Bilou4/godo/configuration"
 	"github.com/Bilou4/godo/model"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
@@ -33,13 +34,14 @@ type tuiModel struct {
 	width, height  int
 	keys           keyMap
 	help           help.Model
+	styles         *TuiStyles
 }
 
-func NewModel(tr model.TaskRepository, lr model.ListRepository, listPerPage int) tuiModel {
+func NewModel(tr model.TaskRepository, lr model.ListRepository, tuiCfg configuration.TuiConfig, listPerPage int) tuiModel {
 	m := tuiModel{focus: 0, loaded: false, tr: tr, lr: lr}
 	m.help = help.New()
 	m.keys = getKeybindings()
-
+	m.styles = newTuiStyles(tuiCfg)
 	m.paginator = paginator.New()
 	m.paginator.Type = paginator.Dots
 	m.paginator.PerPage = listPerPage
@@ -58,7 +60,7 @@ func (m *tuiModel) initLists(width, height int) {
 	var modelLists []list.Model
 	for _, l := range lists {
 		tasks, _ := m.tr.GetTasksByListId(l.ID)
-		newList := list.New([]list.Item{}, list.NewDefaultDelegate(), m.calculateListWidth(), m.calculateListHeight())
+		newList := list.New([]list.Item{}, m.styles.DefaultDelegate, m.calculateListWidth(), m.calculateListHeight())
 		newList.SetShowHelp(false)
 		for idx := range tasks {
 			newList.InsertItem(idx, list.Item(&tasks[idx]))
@@ -121,14 +123,15 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		m.help.Width = msg.Width
 		if !m.loaded {
-			columnStyle.Width(m.calculateListWidth())
-			focusedStyle.Width(m.calculateListWidth())
+			m.styles.ColumnStyle.Width(m.calculateListWidth())
+
+			m.styles.FocusedStyleColor.Width(m.calculateListWidth())
 			m.initLists(m.width, m.height)
 			m.loaded = true
 			// when no list exists
 			if len(m.lists) == 0 {
 				mainModel = m
-				return newListForm(0, "").Update(nil)
+				return newListForm(0, "", m.styles).Update(nil)
 			}
 		} else {
 			w := m.calculateListWidth()
@@ -137,12 +140,12 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.lists[i].SetHeight(h)
 				m.lists[i].SetWidth(w)
 			}
-			columnStyle.Width(w)
-			focusedStyle.Width(w)
+			m.styles.ColumnStyle.Width(w)
+			m.styles.FocusedStyleColor.Width(w)
 		}
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, key.NewBinding(key.WithKeys("q"))):
+		case key.Matches(msg, m.keys.Quit):
 			m.quitting = true
 			return m, tea.Quit
 		case key.Matches(msg, m.keys.Help):
@@ -160,11 +163,11 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// save the current model before switching to a new one
 			mainModel = m
 			// + 1 because in the db, listId starts at 1 and focus starts at 0
-			return newListForm(m.focus+1, m.lists[m.focus].Title).Update(nil)
+			return newListForm(m.focus+1, m.lists[m.focus].Title, m.styles).Update(nil)
 		case key.Matches(msg, m.keys.AddList):
 			mainModel = m
 			m.msg = ""
-			return newListForm(0, "").Update(nil)
+			return newListForm(0, "", m.styles).Update(nil)
 		case key.Matches(msg, m.keys.DeleteList):
 			if len(m.lists[m.focus].Items()) != 0 {
 				m.msg = "cannot delete a List containing Tasks"
@@ -186,7 +189,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// if we deleted the last List, then creates a new one.
 			if len(m.lists) == 0 {
 				mainModel = m
-				return newListForm(0, "").Update(nil)
+				return newListForm(0, "", m.styles).Update(nil)
 			}
 			return m, cmd
 		case key.Matches(msg, m.keys.UpdateTask):
@@ -199,7 +202,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.updatingTask = true
 			mainModel = m
-			return newForm(m.focus+1, int(task.ID), task.Name, string(task.Priority), task.DueDate).Update(nil)
+			return newForm(m.focus+1, int(task.ID), task.Name, string(task.Priority), task.DueDate, m.styles).Update(nil)
 		case key.Matches(msg, m.keys.ToggleTask):
 			selectedIdx := m.lists[m.focus].Index()
 			task, ok := m.lists[m.focus].SelectedItem().(*model.Task)
@@ -218,7 +221,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, m.keys.NewTask):
 			m.msg = ""
 			mainModel = m
-			return newForm(m.focus+1, 0, "", "", time.Time{}).Update(nil)
+			return newForm(m.focus+1, 0, "", "", time.Time{}, m.styles).Update(nil)
 		case key.Matches(msg, m.keys.DeleteTask):
 			selectedIdx := m.lists[m.focus].Index()
 			task, ok := m.lists[m.focus].SelectedItem().(*model.Task)
@@ -291,7 +294,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.lists[m.focus].Title = nlist.Name
 			return m, cmd
 		} else {
-			newList := list.New([]list.Item{}, list.NewDefaultDelegate(), m.calculateListWidth(), m.calculateListHeight())
+			newList := list.New([]list.Item{}, m.styles.DefaultDelegate, m.calculateListWidth(), m.calculateListHeight())
 			newList.SetShowHelp(false)
 			newList.Title = nlist.Name
 			m.lists = append(m.lists, newList)
@@ -318,20 +321,20 @@ func (m tuiModel) View() string {
 		// TODO: status bar as a component? https://pkg.go.dev/github.com/charmbracelet/soft-serve/server/ui/components/statusbar
 		// Status bar
 		statusBar := strings.Builder{}
-		statusVal := statusText.Copy().
+		statusVal := m.styles.StatusText.Copy().
 			Width(m.width - lipgloss.Width(statusKey)).
 			Render(m.msg)
 		bar := lipgloss.JoinHorizontal(lipgloss.Top,
-			statusStyle.Render(statusKey),
+			m.styles.StatusStyle.Render(statusKey),
 			statusVal,
 		)
-		statusBar.WriteString(statusBarStyle.Width(m.width).Render(bar))
+		statusBar.WriteString(m.styles.StatusBarStyle.Width(m.width).Render(bar))
 		start, end := m.paginator.GetSliceBounds(len(m.lists))
 		for idx, ml := range m.lists[start:end] {
 			if m.focus == idx+start {
-				cols = append(cols, focusedStyle.Render(ml.View()))
+				cols = append(cols, m.styles.FocusedStyleColor.Render(ml.View()))
 			} else {
-				cols = append(cols, columnStyle.Render(ml.View()))
+				cols = append(cols, m.styles.ColumnStyle.Render(ml.View()))
 			}
 		}
 		return lipgloss.JoinVertical(lipgloss.Left, lipgloss.JoinHorizontal(lipgloss.Left, cols...), m.paginator.View(), statusBar.String(), m.help.View(m.keys))

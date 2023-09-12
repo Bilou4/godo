@@ -27,7 +27,7 @@ var tuiCmd = &cobra.Command{
 		if listPerPage < 1 {
 			return errors.New("the list-per-page flag cannot be less than 1.")
 		}
-		mainModel := tui.NewModel(tr, lr, listPerPage)
+		mainModel := tui.NewModel(tr, lr, appConfig.Tui, listPerPage)
 		_, err = tea.LogToFile("app.log", "")
 		if err != nil {
 			return err

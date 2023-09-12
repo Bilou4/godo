@@ -15,10 +15,11 @@ type ListForm struct {
 	listId int
 	title  textinput.Model
 	msg    string
+	styles *TuiStyles
 }
 
-func newListForm(listId int, currentTitle string) *ListForm {
-	form := &ListForm{listId: listId}
+func newListForm(listId int, currentTitle string, styles *TuiStyles) *ListForm {
+	form := &ListForm{listId: listId, styles: styles}
 	form.title = textinput.New()
 	form.title.SetValue(currentTitle)
 	form.title.Focus()
@@ -57,20 +58,20 @@ func (m ListForm) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m ListForm) helpMenu() string {
-	return helpStyle.Render("enter: submit")
+	return m.styles.HelpStyle.Render("enter: submit")
 }
 
 func (m ListForm) View() string {
 
 	// Status bar
 	statusBar := strings.Builder{}
-	statusVal := statusText.Copy().
+	statusVal := m.styles.StatusText.Copy().
 		Width(112 - lipgloss.Width(statusKey)).
 		Render(m.msg)
 	bar := lipgloss.JoinHorizontal(lipgloss.Top,
-		statusStyle.Render(statusKey),
+		m.styles.StatusStyle.Render(statusKey),
 		statusVal,
 	)
-	statusBar.WriteString(statusBarStyle.Width(112).Render(bar))
+	statusBar.WriteString(m.styles.StatusBarStyle.Width(112).Render(bar))
 	return lipgloss.JoinVertical(lipgloss.Left, m.title.View(), statusBar.String(), m.helpMenu())
 }
