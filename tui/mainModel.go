@@ -61,6 +61,7 @@ func (m *tuiModel) initLists(width, height int) {
 	for _, l := range lists {
 		tasks, _ := m.tr.GetTasksByListId(l.ID)
 		newList := list.New([]list.Item{}, m.styles.DefaultDelegate, m.calculateListWidth(), m.calculateListHeight())
+		newList.SetFilteringEnabled(false)
 		newList.SetShowHelp(false)
 		for idx := range tasks {
 			newList.InsertItem(idx, list.Item(&tasks[idx]))
@@ -295,6 +296,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		} else {
 			newList := list.New([]list.Item{}, m.styles.DefaultDelegate, m.calculateListWidth(), m.calculateListHeight())
+			newList.SetFilteringEnabled(false)
 			newList.SetShowHelp(false)
 			newList.Title = nlist.Name
 			m.lists = append(m.lists, newList)

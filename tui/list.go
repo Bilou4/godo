@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/Bilou4/godo/model"
+	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -16,11 +17,15 @@ type ListForm struct {
 	title  textinput.Model
 	msg    string
 	styles *TuiStyles
+	keys   keyMapList
+	help   help.Model
 }
 
 func newListForm(listId int, currentTitle string, styles *TuiStyles) *ListForm {
 	form := &ListForm{listId: listId, styles: styles}
 	form.title = textinput.New()
+	form.help = help.New()
+	form.keys = getKeybindingsList()
 	form.title.SetValue(currentTitle)
 	form.title.Focus()
 	return form
@@ -39,14 +44,19 @@ func (m ListForm) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		if key.Matches(msg, key.NewBinding(key.WithKeys("q"))) {
+		switch {
+		case key.Matches(msg, m.keys.Quit):
 			return m, tea.Quit
-		}
-		switch msg.String() {
-		case "enter":
+		case key.Matches(msg, m.keys.Help):
+			m.help.ShowAll = !m.help.ShowAll
+			return m, cmd
+		case key.Matches(msg, m.keys.Submit):
 			if m.title.Focused() {
 				return mainModel, m.NewList
 			}
+			return m, cmd
+		case key.Matches(msg, m.keys.Back):
+			return mainModel, nil
 		}
 	}
 	if m.title.Focused() {
@@ -55,10 +65,6 @@ func (m ListForm) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	} else {
 		return m, cmd
 	}
-}
-
-func (m ListForm) helpMenu() string {
-	return m.styles.HelpStyle.Render("enter: submit")
 }
 
 func (m ListForm) View() string {
@@ -73,5 +79,5 @@ func (m ListForm) View() string {
 		statusVal,
 	)
 	statusBar.WriteString(m.styles.StatusBarStyle.Width(112).Render(bar))
-	return lipgloss.JoinVertical(lipgloss.Left, m.title.View(), statusBar.String(), m.helpMenu())
+	return lipgloss.JoinVertical(lipgloss.Left, m.title.View(), statusBar.String(), m.help.View(m.keys))
 }

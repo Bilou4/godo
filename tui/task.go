@@ -1,12 +1,12 @@
 package tui
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
 	"github.com/Bilou4/godo/configuration"
 	"github.com/Bilou4/godo/model"
+	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -22,6 +22,8 @@ type TaskForm struct {
 	priority textinput.Model
 	msg      string
 	styles   *TuiStyles
+	keys     keyMapTask
+	help     help.Model
 }
 
 func newForm(listId, taskId int, currentTitle, currentPriority string, currentDueDate time.Time, styles *TuiStyles) *TaskForm {
@@ -38,6 +40,8 @@ func newForm(listId, taskId int, currentTitle, currentPriority string, currentDu
 	form.priority.SetValue(currentPriority)
 	form.taskId = taskId
 	form.title.Focus()
+	form.help = help.New()
+	form.keys = getKeybindingsTask()
 	return form
 }
 
@@ -77,11 +81,13 @@ func (m TaskForm) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		if key.Matches(msg, key.NewBinding(key.WithKeys("q"))) {
+		switch {
+		case key.Matches(msg, m.keys.Quit):
 			return m, tea.Quit
-		}
-		switch msg.String() {
-		case "enter":
+		case key.Matches(msg, m.keys.Help):
+			m.help.ShowAll = !m.help.ShowAll
+			return m, cmd
+		case key.Matches(msg, m.keys.Submit):
 			if m.title.Focused() {
 				m.title.Blur()
 				m.dueDate.Focus()
@@ -105,6 +111,8 @@ func (m TaskForm) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, textinput.Blink
 				}
 			}
+		case key.Matches(msg, m.keys.Back):
+			return mainModel, nil
 		}
 	}
 	if m.title.Focused() {
@@ -121,16 +129,6 @@ func (m TaskForm) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 }
 
-func (m TaskForm) helpMenu() string {
-	var msg string
-	if m.title.Focused() || m.dueDate.Focused() {
-		msg = "next"
-	} else {
-		msg = "submit"
-	}
-	return m.styles.HelpStyle.Render(fmt.Sprintf("enter: %s", msg))
-}
-
 func (m TaskForm) View() string {
 	// Status bar
 	statusBar := strings.Builder{}
@@ -142,5 +140,5 @@ func (m TaskForm) View() string {
 		statusVal,
 	)
 	statusBar.WriteString(m.styles.StatusBarStyle.Width(112).Render(bar))
-	return lipgloss.JoinVertical(lipgloss.Left, m.title.View(), m.dueDate.View(), m.priority.View(), statusBar.String(), m.helpMenu())
+	return lipgloss.JoinVertical(lipgloss.Left, m.title.View(), m.dueDate.View(), m.priority.View(), statusBar.String(), m.help.View(m.keys))
 }
