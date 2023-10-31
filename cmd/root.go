@@ -65,6 +65,8 @@ func openDatabase(path string) (*gorm.DB, error) {
 		FullSaveAssociations: true,
 		Logger:               logger.Default.LogMode(logger.Silent),
 		// Logger:               logger.Default.LogMode(logger.Info),
+		// https://gorm.io/docs/error_handling.html
+		TranslateError: true,
 	})
 	if err != nil {
 		return nil, err

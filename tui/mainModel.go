@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/charmbracelet/bubbles/paginator"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"gorm.io/gorm"
 )
 
 var (
@@ -290,6 +292,9 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			err := m.lr.UpdateListName(nlist.ID, nlist.Name)
 			if err != nil {
 				m.msg = fmt.Sprintf("Error updating List: %s", err.Error())
+				if errors.Is(err, gorm.ErrDuplicatedKey) {
+					m.msg = fmt.Sprintf("A list with the name %q already exists.", nlist.Name)
+				}
 				return m, cmd
 			}
 			m.lists[m.focus].Title = nlist.Name
@@ -299,11 +304,15 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			newList.SetFilteringEnabled(false)
 			newList.SetShowHelp(false)
 			newList.Title = nlist.Name
-			m.lists = append(m.lists, newList)
 			_, err := m.lr.CreateList(newList.Title)
 			if err != nil {
 				m.msg = fmt.Sprintf("Error creating List: %s", err.Error())
+				if errors.Is(err, gorm.ErrDuplicatedKey) {
+					m.msg = fmt.Sprintf("A list with the name %q already exists.", nlist.Name)
+				}
+				return m, cmd
 			}
+			m.lists = append(m.lists, newList)
 			m.paginator.SetTotalPages(len(m.lists))
 			m.msg = fmt.Sprintf("List: '%s' added", nlist.Name)
 			return m, cmd
