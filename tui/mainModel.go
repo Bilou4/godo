@@ -324,6 +324,10 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case OperationCanceled:
 		m.msg = msg.reason
+		if len(m.lists) == 0 {
+			m.msg = "List creation canceled. You must have a list for the app to work correctly."
+			return m, tea.Quit
+		}
 		return m, cmd
 	}
 	currList, cmd := m.lists[m.focus].Update(msg)
