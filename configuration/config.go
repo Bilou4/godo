@@ -6,16 +6,29 @@ type Config struct {
 }
 
 type TuiConfig struct {
-	FocusedStyleColor        string `json:"focused_style_color,omitempty"`
+	StatusBarConfig `json:"status_bar,omitempty"`
+	TaskConfig      `json:"task,omitempty"`
+	ListConfig      `json:"list,omitempty"`
+}
+
+type StatusBarConfig struct {
 	StatusForeground         string `json:"status_foreground,omitempty"`
 	StatusBackground         string `json:"status_background,omitempty"`
-	HelpForegroundColor      string `json:"help_foreground_color,omitempty"`
 	StatusBarForegroundLight string `json:"status_bar_foreground_light,omitempty"`
 	StatusBarForegroundDark  string `json:"status_bar_foreground_dark,omitempty"`
 
 	StatusBarBackgroundLight string `json:"status_bar_background_light,omitempty"`
 	StatusBarBackgroundDark  string `json:"status_bar_background_dark,omitempty"`
+}
 
+type ListConfig struct {
+	FocusedStyleColor string `json:"focused_style_color,omitempty"`
+
+	TitleForegroundColor string `json:"title_foreground_color,omitempty"`
+	TitleBackgroundColor string `json:"title_background_color,omitempty"`
+}
+
+type TaskConfig struct {
 	NormalTitleLight string `json:"normal_title_light,omitempty"`
 	NormalTitleDark  string `json:"normal_title_dark,omitempty"`
 
@@ -29,10 +42,4 @@ type TuiConfig struct {
 
 	SelectedDescForegroundLight string `json:"selected_desc_foreground_light,omitempty"`
 	SelectedDescForegroundDark  string `json:"selected_desc_foreground_dark,omitempty"`
-
-	DimmedTitleForegroundLight string `json:"dimmed_title_foreground_light,omitempty"`
-	DimmedTitleForegroundDark  string `json:"dimmed_title_foreground_dark,omitempty"`
-
-	DimmedDescForegroundLight string `json:"dimmed_desc_foreground_light,omitempty"`
-	DimmedDescForegroundDark  string `json:"dimmed_desc_foreground_dark,omitempty"`
 }

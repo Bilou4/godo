@@ -2,20 +2,21 @@ package tui
 
 import (
 	"github.com/Bilou4/godo/configuration"
+	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/lipgloss"
 )
 
 type TuiStyles struct {
-	FocusedStyleColor lipgloss.Style
-	StatusStyle       lipgloss.Style
-	HelpStyle         lipgloss.Style
-	StatusBarStyle    lipgloss.Style
-	StatusText        lipgloss.Style
-	ColumnStyle       lipgloss.Style
+	FocusedStyleBorder lipgloss.Style
+	StatusStyle        lipgloss.Style
+	HelpStyle          help.Styles
+	StatusBarStyle     lipgloss.Style
+	StatusText         lipgloss.Style
+	ColumnStyle        lipgloss.Style
 
-	// items styles
-	list.DefaultDelegate
+	ItemsStyle list.DefaultDelegate
+	ListStyles list.Styles
 }
 
 func newTuiStyles(tuiCfg configuration.TuiConfig) *TuiStyles {
@@ -27,9 +28,6 @@ func newTuiStyles(tuiCfg configuration.TuiConfig) *TuiStyles {
 	}
 	if tuiCfg.StatusBackground == "" {
 		tuiCfg.StatusBackground = "#FF5F87"
-	}
-	if tuiCfg.HelpForegroundColor == "" {
-		tuiCfg.HelpForegroundColor = "241"
 	}
 	if tuiCfg.StatusBarForegroundLight == "" {
 		tuiCfg.StatusBarForegroundLight = "#343433"
@@ -81,68 +79,63 @@ func newTuiStyles(tuiCfg configuration.TuiConfig) *TuiStyles {
 		tuiCfg.SelectedDescForegroundDark = "#AD58B4"
 	}
 
-	if tuiCfg.DimmedTitleForegroundLight == "" {
-		tuiCfg.DimmedTitleForegroundLight = "#A49FA5"
+	if tuiCfg.TitleBackgroundColor == "" {
+		tuiCfg.TitleBackgroundColor = "62"
 	}
-	if tuiCfg.DimmedTitleForegroundDark == "" {
-		tuiCfg.DimmedTitleForegroundDark = "#777777"
+
+	if tuiCfg.TitleForegroundColor == "" {
+		tuiCfg.TitleForegroundColor = "230"
 	}
-	if tuiCfg.DimmedDescForegroundLight == "" {
-		tuiCfg.DimmedDescForegroundLight = "#C2B8C2"
-	}
-	if tuiCfg.DimmedDescForegroundDark == "" {
-		tuiCfg.DimmedDescForegroundDark = "#4D4D4D"
-	}
-	defaultDelegate := list.NewDefaultDelegate()
-	nt := lipgloss.NewStyle().
+
+	normalStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.AdaptiveColor{Light: tuiCfg.NormalTitleLight, Dark: tuiCfg.NormalTitleDark}).
 		Padding(0, 0, 0, 2)
-	st := lipgloss.NewStyle().
+
+	selectedStyle := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder(), false, false, false, true).
 		BorderForeground(lipgloss.AdaptiveColor{Light: tuiCfg.SelectedTitleBorderForegroundLight, Dark: tuiCfg.SelectedTitleBorderForegroundDark}).
 		Foreground(lipgloss.AdaptiveColor{Light: tuiCfg.SelectedTitleForegroundLight, Dark: tuiCfg.SelectedTitleForegroundDark}).
 		Padding(0, 0, 0, 1)
-	dt := lipgloss.NewStyle().
-		Foreground(lipgloss.AdaptiveColor{Light: tuiCfg.DimmedTitleForegroundLight, Dark: tuiCfg.DimmedTitleForegroundDark}).
-		Padding(0, 0, 0, 2)
-	defaultDelegate.Styles = list.DefaultItemStyles{
-		NormalTitle: nt,
 
-		NormalDesc: nt.Copy().
+	defaultDelegate := list.NewDefaultDelegate()
+
+	defaultDelegate.Styles = list.DefaultItemStyles{
+		NormalTitle: normalStyle,
+
+		NormalDesc: normalStyle.Copy().
 			Foreground(lipgloss.AdaptiveColor{Light: tuiCfg.NormalDescLight, Dark: tuiCfg.NormalDescDark}),
 
-		SelectedTitle: st,
+		SelectedTitle: selectedStyle,
 
-		SelectedDesc: st.Copy().
+		SelectedDesc: selectedStyle.Copy().
 			Foreground(lipgloss.AdaptiveColor{Light: tuiCfg.SelectedDescForegroundLight, Dark: tuiCfg.SelectedDescForegroundDark}),
-
-		DimmedTitle: dt,
-
-		DimmedDesc: dt.Copy().
-			Foreground(lipgloss.AdaptiveColor{Light: tuiCfg.DimmedDescForegroundLight, Dark: tuiCfg.DimmedDescForegroundDark}),
-
-		FilterMatch: lipgloss.NewStyle().Underline(true),
 	}
 
+	listStyles := list.DefaultStyles()
+	listStyles.Title = lipgloss.NewStyle().
+		Background(lipgloss.Color(tuiCfg.TitleBackgroundColor)).
+		Foreground(lipgloss.Color(tuiCfg.TitleForegroundColor)).
+		Padding(0, 1)
+
 	return &TuiStyles{
-		FocusedStyleColor: lipgloss.NewStyle().
+		FocusedStyleBorder: lipgloss.NewStyle().
 			Padding(1, 2).
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color(tuiCfg.FocusedStyleColor)),
+
 		StatusStyle: lipgloss.NewStyle().
 			Inherit(statusBarStyle).
 			Foreground(lipgloss.Color(tuiCfg.StatusForeground)).
 			Background(lipgloss.Color(tuiCfg.StatusBackground)).
 			Padding(0, 1).
 			MarginRight(1),
-		HelpStyle: lipgloss.NewStyle().
-			Foreground(lipgloss.Color(tuiCfg.HelpForegroundColor)),
 
 		StatusBarStyle: statusBarStyle,
 		StatusText:     lipgloss.NewStyle().Inherit(statusBarStyle),
 		ColumnStyle: lipgloss.NewStyle().Padding(1, 2).
 			Border(lipgloss.HiddenBorder()),
-		DefaultDelegate: defaultDelegate,
+		ItemsStyle: defaultDelegate,
+		ListStyles: listStyles,
 	}
 }
 

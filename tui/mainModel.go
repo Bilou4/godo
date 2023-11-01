@@ -62,7 +62,8 @@ func (m *tuiModel) initLists(width, height int) {
 	var modelLists []list.Model
 	for _, l := range lists {
 		tasks, _ := m.tr.GetTasksByListId(l.ID)
-		newList := list.New([]list.Item{}, m.styles.DefaultDelegate, m.calculateListWidth(), m.calculateListHeight())
+		newList := list.New([]list.Item{}, m.styles.ItemsStyle, m.calculateListWidth(), m.calculateListHeight())
+		newList.Styles = m.styles.ListStyles
 		newList.SetFilteringEnabled(false)
 		newList.SetShowHelp(false)
 		for idx := range tasks {
@@ -128,7 +129,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if !m.loaded {
 			m.styles.ColumnStyle.Width(m.calculateListWidth())
 
-			m.styles.FocusedStyleColor.Width(m.calculateListWidth())
+			m.styles.FocusedStyleBorder.Width(m.calculateListWidth())
 			m.initLists(m.width, m.height)
 			m.loaded = true
 			// when no list exists
@@ -144,7 +145,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.lists[i].SetWidth(w)
 			}
 			m.styles.ColumnStyle.Width(w)
-			m.styles.FocusedStyleColor.Width(w)
+			m.styles.FocusedStyleBorder.Width(w)
 		}
 	case tea.KeyMsg:
 		switch {
@@ -300,7 +301,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.lists[m.focus].Title = nlist.Name
 			return m, cmd
 		} else {
-			newList := list.New([]list.Item{}, m.styles.DefaultDelegate, m.calculateListWidth(), m.calculateListHeight())
+			newList := list.New([]list.Item{}, m.styles.ItemsStyle, m.calculateListWidth(), m.calculateListHeight())
 			newList.SetFilteringEnabled(false)
 			newList.SetShowHelp(false)
 			newList.Title = nlist.Name
@@ -343,7 +344,7 @@ func (m tuiModel) View() string {
 		start, end := m.paginator.GetSliceBounds(len(m.lists))
 		for idx, ml := range m.lists[start:end] {
 			if m.focus == idx+start {
-				cols = append(cols, m.styles.FocusedStyleColor.Render(ml.View()))
+				cols = append(cols, m.styles.FocusedStyleBorder.Render(ml.View()))
 			} else {
 				cols = append(cols, m.styles.ColumnStyle.Render(ml.View()))
 			}
