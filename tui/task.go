@@ -37,7 +37,11 @@ func newForm(listId, taskId int, currentTitle, currentPriority string, currentDu
 		form.dueDate.SetValue(currentDueDate.Format(configuration.DueDateFormat))
 	}
 	form.priority = textinput.New()
-	form.priority.SetValue(currentPriority)
+	if currentPriority == "" {
+		form.priority.Placeholder = "low (default)"
+	} else {
+		form.priority.SetValue(currentPriority)
+	}
 	form.taskId = taskId
 	form.title.Focus()
 	form.help = help.New()
@@ -103,6 +107,10 @@ func (m TaskForm) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, textinput.Blink
 				}
 			} else {
+				if m.priority.Value() == "" {
+					// if empty, set the value to 'low', the default priority
+					m.priority.SetValue("low")
+				}
 				if m.priorityIsValid() {
 					// switch to previous model, add task
 					return mainModel, m.NewTask
