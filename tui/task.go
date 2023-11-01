@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -24,10 +25,14 @@ type TaskForm struct {
 	styles   *TuiStyles
 	keys     keyMapTask
 	help     help.Model
+	updating bool
 }
 
 func newForm(listId, taskId int, currentTitle, currentPriority string, currentDueDate time.Time, styles *TuiStyles) *TaskForm {
 	form := &TaskForm{listId: listId, styles: styles}
+	if taskId != 0 {
+		form.updating = true
+	}
 	form.title = textinput.New()
 	form.title.SetValue(currentTitle)
 	form.dueDate = textinput.New()
@@ -81,6 +86,14 @@ func (m TaskForm) priorityIsValid() bool {
 	return err == nil
 }
 
+func (m TaskForm) cancelOperation() tea.Msg {
+	if m.updating {
+		return OperationCanceled{reason: fmt.Sprintf("Update of the Task %q canceled", m.title.Value())}
+	} else {
+		return OperationCanceled{reason: "Task creation canceled"}
+	}
+}
+
 func (m TaskForm) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
@@ -120,7 +133,7 @@ func (m TaskForm) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case key.Matches(msg, m.keys.Back):
-			return mainModel, nil
+			return mainModel, m.cancelOperation
 		}
 	}
 	if m.title.Focused() {

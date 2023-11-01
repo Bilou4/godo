@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/Bilou4/godo/model"
@@ -13,16 +14,20 @@ import (
 )
 
 type ListForm struct {
-	listId int
-	title  textinput.Model
-	msg    string
-	styles *TuiStyles
-	keys   keyMapList
-	help   help.Model
+	listId   int
+	title    textinput.Model
+	msg      string
+	styles   *TuiStyles
+	keys     keyMapList
+	help     help.Model
+	updating bool
 }
 
 func newListForm(listId int, currentTitle string, styles *TuiStyles) *ListForm {
 	form := &ListForm{listId: listId, styles: styles}
+	if listId != 0 {
+		form.updating = true
+	}
 	form.title = textinput.New()
 	form.help = help.New()
 	form.keys = getKeybindingsList()
@@ -38,6 +43,14 @@ func (m ListForm) NewList() tea.Msg {
 
 func (m ListForm) Init() tea.Cmd {
 	return textinput.Blink
+}
+
+func (m ListForm) cancelOperation() tea.Msg {
+	if m.updating {
+		return OperationCanceled{reason: fmt.Sprintf("Update of the List %q canceled", m.title.Value())}
+	} else {
+		return OperationCanceled{reason: "List creation canceled"}
+	}
 }
 
 func (m ListForm) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -56,7 +69,7 @@ func (m ListForm) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, cmd
 		case key.Matches(msg, m.keys.Back):
-			return mainModel, nil
+			return mainModel, m.cancelOperation
 		}
 	}
 	if m.title.Focused() {

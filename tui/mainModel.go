@@ -21,6 +21,10 @@ var (
 	mainModel tea.Model
 )
 
+type OperationCanceled struct {
+	reason string
+}
+
 type tuiModel struct {
 	focus          int
 	loaded         bool
@@ -318,6 +322,9 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.msg = fmt.Sprintf("List: '%s' added", nlist.Name)
 			return m, cmd
 		}
+	case OperationCanceled:
+		m.msg = msg.reason
+		return m, cmd
 	}
 	currList, cmd := m.lists[m.focus].Update(msg)
 	m.lists[m.focus] = currList
