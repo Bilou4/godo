@@ -43,6 +43,10 @@ godo tui
 
 For more information, use the `godo help` command.
 
+## Show me the render!
+
+![video example of use](demo.svg)
+
 ## Customization
 Default colors can be overwritten in the configuration file (`~/.config/godo/config.json`).
 
